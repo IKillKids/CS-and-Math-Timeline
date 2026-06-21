@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import type { RoadmapNode, TimeBlock } from '@/lib/types';
 import { TIME_BLOCKS } from '@/lib/types';
 import { PhaseNode } from './PhaseNode';
@@ -164,14 +165,19 @@ export function TimelineView({
   onToggleParent,
   onSelectNode,
 }: TimelineViewProps) {
-  // Overall track progress calculations
-  const totalCS = nodes.filter((n) => n.track === 'cs' && n.parent_id).length;
-  const completedCS = nodes.filter((n) => n.track === 'cs' && n.parent_id && n.is_completed).length;
-  const csProgress = totalCS > 0 ? Math.round((completedCS / totalCS) * 100) : 0;
-
-  const totalMath = nodes.filter((n) => n.track === 'math' && n.parent_id).length;
-  const completedMath = nodes.filter((n) => n.track === 'math' && n.parent_id && n.is_completed).length;
-  const mathProgress = totalMath > 0 ? Math.round((completedMath / totalMath) * 100) : 0;
+  // Memoized track progress — only recomputes when nodes change
+  const { csProgress, mathProgress } = useMemo(() => {
+    const csChildren = nodes.filter((n) => n.track === 'cs' && n.parent_id);
+    const mathChildren = nodes.filter((n) => n.track === 'math' && n.parent_id);
+    return {
+      csProgress: csChildren.length > 0
+        ? Math.round(csChildren.filter((n) => n.is_completed).length / csChildren.length * 100)
+        : 0,
+      mathProgress: mathChildren.length > 0
+        ? Math.round(mathChildren.filter((n) => n.is_completed).length / mathChildren.length * 100)
+        : 0,
+    };
+  }, [nodes]);
 
   // Horizontal mouse-wheel scroll translator (snappy without scroll snap conflicts)
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {

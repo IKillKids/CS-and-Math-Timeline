@@ -117,14 +117,11 @@ export function useRoadmapData() {
         );
       });
 
-      // Persist to Supabase
+      // Single upsert for all updates instead of N sequential calls
       if (supabase && isOnline) {
-        for (const update of updates) {
-          await supabase
-            .from('roadmap_nodes')
-            .update({ is_completed: update.is_completed })
-            .eq('id', update.id);
-        }
+        const rows = updates.map(({ id, is_completed }) => ({ id, is_completed }));
+        const { error } = await supabase.from('roadmap_nodes').upsert(rows, { onConflict: 'id' });
+        if (error) console.error('Batch update error:', error);
       }
     },
     [isOnline]
@@ -226,6 +223,5 @@ export function useRoadmapData() {
     updateNotes,
     getChildren,
     getParentNodes,
-    refetch: fetchNodes,
   };
 }

@@ -4,6 +4,28 @@ import { ArrowLeft, Sparkles, BookOpen, PenTool, ExternalLink } from 'lucide-rea
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 
+// Module-level — never rebuilt on render
+const THEME_CLASSES = {
+  cyan: {
+    border: 'border-cyan-500/20',
+    bg: 'bg-cyan-500/5',
+    text: 'text-cyan-400',
+    badge: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+    focusBorder: 'group-hover:border-cyan-500/30 group-hover:text-cyan-400',
+    checkAccent: 'data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500',
+    stepLine: 'bg-cyan-500/10 group-hover:bg-cyan-500/25',
+  },
+  violet: {
+    border: 'border-violet-500/20',
+    bg: 'bg-violet-500/5',
+    text: 'text-violet-400',
+    badge: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+    focusBorder: 'group-hover:border-violet-500/30 group-hover:text-violet-400',
+    checkAccent: 'data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500',
+    stepLine: 'bg-violet-500/10 group-hover:bg-violet-500/25',
+  },
+} as const;
+
 interface DrillDownViewProps {
   phaseId: string;
   nodes: RoadmapNode[];
@@ -33,25 +55,7 @@ export function DrillDownView({
   const accentColor = phase.track === 'cs' ? 'cyan' : 'violet';
   const trackLabel = phase.track === 'cs' ? 'Coding & Software Engineering' : 'Mathematics';
 
-  const themeClasses = accentColor === 'cyan'
-    ? {
-        border: 'border-cyan-500/20',
-        bg: 'bg-cyan-500/5',
-        text: 'text-cyan-400',
-        badge: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-        focusBorder: 'group-hover:border-cyan-500/30 group-hover:text-cyan-400',
-        checkAccent: 'data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500',
-        stepLine: 'bg-cyan-500/10 group-hover:bg-cyan-500/25',
-      }
-    : {
-        border: 'border-violet-500/20',
-        bg: 'bg-violet-500/5',
-        text: 'text-violet-400',
-        badge: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
-        focusBorder: 'group-hover:border-violet-500/30 group-hover:text-violet-400',
-        checkAccent: 'data-[state=checked]:bg-violet-500 data-[state=checked]:border-violet-500',
-        stepLine: 'bg-violet-500/10 group-hover:bg-violet-500/25',
-      };
+  const themeClasses = THEME_CLASSES[accentColor];
 
   const progressBadgeClasses = isPhaseCompleted
     ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'

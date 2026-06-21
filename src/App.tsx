@@ -38,9 +38,7 @@ export default function App() {
     }
   };
 
-  const handleCloseDetail = () => {
-    setIsDetailOpen(false);
-  };
+
 
   // Find updated selectedNode from state to keep notes/status in sync when it changes
   const activeNode = selectedNode
@@ -60,7 +58,6 @@ export default function App() {
             <p className="text-sm text-white/40 font-medium">Loading roadmap data...</p>
           </div>
         ) : drillDownPhaseId ? (
-          /* Option B Focus Drill-Down Page View */
           <DrillDownView
             phaseId={drillDownPhaseId}
             nodes={nodes}
@@ -88,7 +85,7 @@ export default function App() {
       <DetailSheet
         node={activeNode}
         isOpen={isDetailOpen}
-        onClose={handleCloseDetail}
+        onClose={() => setIsDetailOpen(false)}
         updateNotes={updateNotes}
       />
 
