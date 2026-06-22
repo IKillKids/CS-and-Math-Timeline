@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import type { RoadmapNode, TimeBlock } from '@/lib/types';
 import { TIME_BLOCKS } from '@/lib/types';
 import { PhaseNode } from './PhaseNode';
@@ -179,13 +179,25 @@ export function TimelineView({
     };
   }, [nodes]);
 
-  // Horizontal mouse-wheel scroll translator (snappy without scroll snap conflicts)
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (e.deltaY !== 0) {
-      e.preventDefault();
-      e.currentTarget.scrollLeft += e.deltaY * 1.35; // boosted multiplier for snappy responsiveness
-    }
-  };
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const handleWheelEvent = (e: WheelEvent) => {
+      if (e.deltaY !== 0 || e.deltaX !== 0) {
+        e.preventDefault();
+        const scrollAmount = (e.deltaY * 1.35) + e.deltaX;
+        el.scrollLeft += scrollAmount;
+      }
+    };
+
+    el.addEventListener('wheel', handleWheelEvent, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheelEvent);
+    };
+  }, []);
 
   return (
     <div className="space-y-6 w-full animate-in fade-in duration-300">
@@ -225,8 +237,8 @@ export function TimelineView({
 
         {/* Horizontal Scroll Area */}
         <div 
+          ref={scrollContainerRef}
           className="w-full overflow-x-auto pb-4 pt-4 scrollbar-none select-none relative z-10"
-          onWheel={handleWheel}
         >
           {/* Horizontal timeline axis line behind badges (exactly centered vertically) */}
           <div className="absolute top-1/2 left-10 right-10 h-[1.5px] bg-gradient-to-r from-cyan-500/20 via-slate-500/20 to-violet-500/20 -translate-y-1/2 z-0" />
