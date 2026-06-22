@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { RoadmapNode } from '@/lib/types';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
 import { Textarea } from './ui/textarea';
@@ -14,14 +14,13 @@ interface DetailSheetProps {
 }
 
 export function DetailSheet({ node, isOpen, onClose, updateNotes }: DetailSheetProps) {
+  const [prevNodeState, setPrevNodeState] = useState<{ id: string; notes: string } | null>(null);
   const [localNotes, setLocalNotes] = useState('');
 
-  // Sync local notes state with node when node changes
-  useEffect(() => {
-    if (node) {
-      setLocalNotes(node.notes || '');
-    }
-  }, [node?.id, node?.notes]);
+  if (node && (prevNodeState?.id !== node.id || prevNodeState?.notes !== node.notes)) {
+    setPrevNodeState({ id: node.id, notes: node.notes || '' });
+    setLocalNotes(node.notes || '');
+  }
 
   if (!node) return null;
 

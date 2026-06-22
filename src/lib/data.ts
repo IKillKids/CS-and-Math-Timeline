@@ -19,11 +19,127 @@ function seedToNodes(): RoadmapNode[] {
   }));
 }
 
+// Sync database with seed data if there is a mismatch, preserving notes/completion
+async function syncDatabaseWithSeed(dbNodes: RoadmapNode[]): Promise<RoadmapNode[]> {
+  if (!supabase) return dbNodes;
+
+  const seedNodes = seedToNodes();
+
+  // Check if there is a mismatch
+  const dbMap = new Map(dbNodes.map((n) => [n.id, n]));
+  const seedMap = new Map(seedNodes.map((n) => [n.id, n]));
+
+  let needsSync = false;
+
+  // 1. Check if any node in seed data is missing or has different metadata
+  for (const seedNode of seedNodes) {
+    const dbNode = dbMap.get(seedNode.id);
+    if (!dbNode) {
+      needsSync = true;
+      break;
+    }
+    if (
+      dbNode.title !== seedNode.title ||
+      dbNode.track !== seedNode.track ||
+      dbNode.time_block !== seedNode.time_block ||
+      dbNode.parent_id !== seedNode.parent_id ||
+      dbNode.resource_link !== seedNode.resource_link ||
+      dbNode.how_to_learn !== seedNode.how_to_learn ||
+      dbNode.sort_order !== seedNode.sort_order
+    ) {
+      needsSync = true;
+      break;
+    }
+  }
+
+  // 2. Check if there are any obsolete nodes in the database
+  if (!needsSync) {
+    for (const dbNode of dbNodes) {
+      if (!seedMap.has(dbNode.id)) {
+        needsSync = true;
+        break;
+      }
+    }
+  }
+
+  if (!needsSync) {
+    return dbNodes;
+  }
+
+  console.log('Database out of sync with seed data. Syncing...');
+
+  // Prepare nodes to upsert, preserving completion and notes
+  const toUpsert: RoadmapNode[] = seedNodes.map((seedNode) => {
+    const dbNode = dbMap.get(seedNode.id);
+    return {
+      ...seedNode,
+      is_completed: dbNode ? dbNode.is_completed : false,
+      notes: dbNode ? dbNode.notes : '',
+    };
+  });
+
+  // Identify nodes to delete
+  const toDeleteIds = dbNodes
+    .filter((dbNode) => !seedMap.has(dbNode.id))
+    .map((dbNode) => dbNode.id);
+
+  try {
+    // 1. Delete obsolete nodes first
+    if (toDeleteIds.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('roadmap_nodes')
+        .delete()
+        .in('id', toDeleteIds);
+      if (deleteError) throw deleteError;
+    }
+
+    // 2. Upsert parents first, then children to satisfy foreign key constraints
+    const parents = toUpsert.filter((n) => !n.parent_id);
+    const children = toUpsert.filter((n) => n.parent_id);
+
+    const batchSize = 50;
+
+    // Upsert parents in batches
+    for (let i = 0; i < parents.length; i += batchSize) {
+      const batch = parents.slice(i, i + batchSize);
+      const { error: upsertError } = await supabase.from('roadmap_nodes').upsert(batch);
+      if (upsertError) throw upsertError;
+    }
+
+    // Upsert children in batches
+    for (let i = 0; i < children.length; i += batchSize) {
+      const batch = children.slice(i, i + batchSize);
+      const { error: upsertError } = await supabase.from('roadmap_nodes').upsert(batch);
+      if (upsertError) throw upsertError;
+    }
+
+    // Fetch the updated nodes from the database
+    const { data: updatedData, error: fetchError } = await supabase
+      .from('roadmap_nodes')
+      .select('*')
+      .order('sort_order', { ascending: true });
+
+    if (fetchError) throw fetchError;
+    console.log('Database synced successfully with seed data!');
+    return (updatedData as RoadmapNode[]) || toUpsert;
+  } catch (e) {
+    console.error('Sync failed:', e);
+    return toUpsert;
+  }
+}
+
 export function useRoadmapData() {
   const [nodes, setNodes] = useState<RoadmapNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(!!supabase);
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  // Seed the database with initial data
+  const seedDatabase = async () => {
+    if (!supabase) return;
+    const syncedData = await syncDatabaseWithSeed([]);
+    setNodes(syncedData);
+  };
 
   // Fetch all nodes from Supabase (or use local seed data)
   const fetchNodes = useCallback(async () => {
@@ -38,7 +154,8 @@ export function useRoadmapData() {
         if (error) throw error;
 
         if (data && data.length > 0) {
-          setNodes(data as RoadmapNode[]);
+          const syncedData = await syncDatabaseWithSeed(data as RoadmapNode[]);
+          setNodes(syncedData);
           setIsOnline(true);
         } else {
           // Table exists but is empty — seed it
@@ -56,33 +173,8 @@ export function useRoadmapData() {
     setLoading(false);
   }, []);
 
-  // Seed the database with initial data
-  const seedDatabase = async () => {
-    if (!supabase) return;
-
-    const rows = seedToNodes();
-    // Insert in batches to avoid payload limits
-    const batchSize = 50;
-    for (let i = 0; i < rows.length; i += batchSize) {
-      const batch = rows.slice(i, i + batchSize);
-      const { error } = await supabase.from('roadmap_nodes').upsert(batch);
-      if (error) {
-        console.error('Seed error:', error);
-        setNodes(seedToNodes());
-        setIsOnline(false);
-        return;
-      }
-    }
-
-    // Re-fetch after seeding
-    const { data } = await supabase
-      .from('roadmap_nodes')
-      .select('*')
-      .order('sort_order', { ascending: true });
-    if (data) setNodes(data as RoadmapNode[]);
-  };
-
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNodes();
   }, [fetchNodes]);
 
