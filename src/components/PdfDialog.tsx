@@ -57,7 +57,7 @@ export function PdfDialog({ isOpen, onClose }: PdfDialogProps) {
       <DialogContent
         className={`flex flex-col p-6 border-white/10 bg-slate-900/98 backdrop-blur-xl transition-all duration-300 ${
           isFullscreen
-            ? '!fixed !inset-0 !max-w-none !w-screen !h-screen !rounded-none !left-0 !top-0 !translate-x-0 !translate-y-0'
+            ? 'fixed inset-0 max-w-none w-screen h-screen rounded-none translate-x-0 translate-y-0 left-0 top-0'
             : 'max-w-[95vw] md:max-w-6xl h-[90vh]'
         }`}
       >

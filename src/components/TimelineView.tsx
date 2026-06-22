@@ -186,10 +186,9 @@ export function TimelineView({
     if (!el) return;
 
     const handleWheelEvent = (e: WheelEvent) => {
-      if (e.deltaY !== 0 || e.deltaX !== 0) {
+      if (e.deltaY !== 0) {
         e.preventDefault();
-        const scrollAmount = (e.deltaY * 1.35) + e.deltaX;
-        el.scrollLeft += scrollAmount;
+        el.scrollLeft += e.deltaY * 1.35;
       }
     };
 
